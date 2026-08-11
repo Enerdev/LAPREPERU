@@ -1,20 +1,5 @@
-# Node / package managers
 node_modules/
-**/node_modules/
-
-# Environment files
-.env
-**/.env
-.env.*
-**/.env.*
-
-# Local build caches
-.vite/
-**/.vite/
 dist/
-build/
-coverage/
-
-# OS files
-.DS_Store
-Thumbs.db
+.vite/
+.env
+*.log
