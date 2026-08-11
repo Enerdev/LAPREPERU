@@ -1,0 +1,61 @@
+// Este archivo define tu base de datos. Prisma genera todo el código
+// necesario para hablar con PostgreSQL a partir de este modelo.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoAlumno {
+  activo
+  inactivo
+  pendiente
+}
+
+enum EstadoPago {
+  pagado
+  pendiente
+  vencido
+}
+
+model Student {
+  id             String        @id @default(cuid())
+  dni            String        @unique
+  nombres        String
+  apellidos      String
+  email          String
+  telefono       String
+  sede           String
+  ciclo          String
+  estado         EstadoAlumno  @default(pendiente)
+  fechaMatricula DateTime      @default(now())
+  pagado         Boolean       @default(false)
+  monto          Float
+  montoPagado    Float         @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  payments       Payment[]
+
+  @@map("students")
+}
+
+model Payment {
+  id          String     @id @default(cuid())
+  studentId   String
+  student     Student    @relation(fields: [studentId], references: [id])
+  concepto    String
+  monto       Float
+  fecha       DateTime   @default(now())
+  estado      EstadoPago @default(pendiente)
+  sede        String
+  metodoPago  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("payments")
+}
