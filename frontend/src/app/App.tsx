@@ -44,6 +44,27 @@ interface Student {
   pagado: boolean;
   monto: number;
   montoPagado: number;
+  codigoMatricula?: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  fechaNacimiento?: string;
+  lugarNacimiento?: string;
+  escuelaProfesional?: string;
+  facultad?: string;
+  cicloInicio?: string;
+  cicloDuracion?: string;
+  cicloTurno?: string;
+  direccion?: string;
+  distrito?: string;
+  provincia?: string;
+  departamento?: string;
+  colegioNombre?: string;
+  colegioDistrito?: string;
+  colegioProvincia?: string;
+  colegioDepartamento?: string;
+  colegioAnioEgreso?: string;
+  comoSeEntero?: string;
+  comoSeEnteroDetalle?: string;
 }
 
 interface Payment {
@@ -109,6 +130,27 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
   const [form, setForm] = useState({
     dni: "", nombres: "", apellidos: "", email: "", telefono: "",
     sede: sedes[0], ciclo: ciclos[0], monto: "380", metodoPago: "Efectivo",
+    codigoMatricula: "",
+    apellidoPaterno: "",
+    apellidoMaterno: "",
+    fechaNacimiento: "",
+    lugarNacimiento: "",
+    escuelaProfesional: "",
+    facultad: "",
+    cicloInicio: "",
+    cicloDuracion: "",
+    cicloTurno: "",
+    direccion: "",
+    distrito: "",
+    provincia: "",
+    departamento: "",
+    colegioNombre: "",
+    colegioDistrito: "",
+    colegioProvincia: "",
+    colegioDepartamento: "",
+    colegioAnioEgreso: "",
+    comoSeEntero: "redes",
+    comoSeEnteroDetalle: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -119,6 +161,22 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
     if (!form.apellidos.trim()) e.apellidos = "Requerido";
     if (!form.email.includes("@")) e.email = "Email inválido";
     if (!form.telefono || form.telefono.length < 9) e.telefono = "Teléfono inválido";
+    if (!form.codigoMatricula.trim()) e.codigoMatricula = "Requerido";
+    if (!form.apellidoPaterno.trim()) e.apellidoPaterno = "Requerido";
+    if (!form.apellidoMaterno.trim()) e.apellidoMaterno = "Requerido";
+    if (!form.fechaNacimiento.trim()) e.fechaNacimiento = "Requerido";
+    if (!form.lugarNacimiento.trim()) e.lugarNacimiento = "Requerido";
+    if (!form.direccion.trim()) e.direccion = "Requerido";
+    if (!form.distrito.trim()) e.distrito = "Requerido";
+    if (!form.provincia.trim()) e.provincia = "Requerido";
+    if (!form.departamento.trim()) e.departamento = "Requerido";
+    if (!form.colegioNombre.trim()) e.colegioNombre = "Requerido";
+    if (!form.colegioDistrito.trim()) e.colegioDistrito = "Requerido";
+    if (!form.colegioProvincia.trim()) e.colegioProvincia = "Requerido";
+    if (!form.colegioDepartamento.trim()) e.colegioDepartamento = "Requerido";
+    if (!form.colegioAnioEgreso.trim()) e.colegioAnioEgreso = "Requerido";
+    if (!form.escuelaProfesional.trim()) e.escuelaProfesional = "Requerido";
+    if (!form.facultad.trim()) e.facultad = "Requerido";
     return e;
   };
 
@@ -139,6 +197,27 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
       pagado: false,
       monto: Number(form.monto),
       montoPagado: 0,
+      codigoMatricula: form.codigoMatricula,
+      apellidoPaterno: form.apellidoPaterno,
+      apellidoMaterno: form.apellidoMaterno,
+      fechaNacimiento: form.fechaNacimiento,
+      lugarNacimiento: form.lugarNacimiento,
+      escuelaProfesional: form.escuelaProfesional,
+      facultad: form.facultad,
+      cicloInicio: form.cicloInicio,
+      cicloDuracion: form.cicloDuracion,
+      cicloTurno: form.cicloTurno,
+      direccion: form.direccion,
+      distrito: form.distrito,
+      provincia: form.provincia,
+      departamento: form.departamento,
+      colegioNombre: form.colegioNombre,
+      colegioDistrito: form.colegioDistrito,
+      colegioProvincia: form.colegioProvincia,
+      colegioDepartamento: form.colegioDepartamento,
+      colegioAnioEgreso: form.colegioAnioEgreso,
+      comoSeEntero: form.comoSeEntero,
+      comoSeEnteroDetalle: form.comoSeEnteroDetalle,
     };
     onSave(student);
   };
@@ -199,32 +278,60 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
               <BookOpen size={14} /> Datos Académicos
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Código de Matrícula *" name="codigoMatricula" placeholder="MAT-0001" />
+              <Field label="Fecha de Nacimiento *" name="fechaNacimiento" type="date" placeholder="" />
+              <Field label="Apellido Paterno *" name="apellidoPaterno" placeholder="Torres" />
+              <Field label="Apellido Materno *" name="apellidoMaterno" placeholder="Quispe" />
+              <Field label="Lugar de Nacimiento *" name="lugarNacimiento" placeholder="Puno" />
+              <Field label="Escuela Profesional *" name="escuelaProfesional" placeholder="Ingeniería Civil" />
+              <Field label="Facultad *" name="facultad" placeholder="Ciencias" />
+              <Field label="Inicio de Ciclo" name="cicloInicio" placeholder="Marzo 2026" />
+              <Field label="Duración del Ciclo" name="cicloDuracion" placeholder="6 meses" />
+              <Field label="Turno" name="cicloTurno" placeholder="Mañana" />
+            </div>
+          </div>
+
+          {/* Domicilio y Colegio */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <MapPin size={14} /> Domicilio y Colegio
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Dirección *" name="direccion" placeholder="Av. Los Ángeles 123" />
+              <Field label="Distrito *" name="distrito" placeholder="Puno" />
+              <Field label="Provincia *" name="provincia" placeholder="Puno" />
+              <Field label="Departamento *" name="departamento" placeholder="Puno" />
+              <Field label="Nombre de la I.E. *" name="colegioNombre" placeholder="I.E. San Juan" />
+              <Field label="Distrito I.E. *" name="colegioDistrito" placeholder="Puno" />
+              <Field label="Provincia I.E. *" name="colegioProvincia" placeholder="Puno" />
+              <Field label="Departamento I.E. *" name="colegioDepartamento" placeholder="Puno" />
+              <Field label="Año de Egreso *" name="colegioAnioEgreso" placeholder="2025" />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <MapPin size={14} /> ¿Cómo se enteró?
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
-                <div className="relative">
-                  <select
-                    value={form.sede}
-                    onChange={e => setForm(p => ({ ...p, sede: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    {sedes.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Medio *</label>
+                <select
+                  value={form.comoSeEntero}
+                  onChange={e => setForm(p => ({ ...p, comoSeEntero: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  {[
+                    { value: "redes", label: "Redes Sociales" },
+                    { value: "radio", label: "Radio" },
+                    { value: "tv", label: "T.V." },
+                    { value: "otro", label: "Otra persona" },
+                  ].map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ciclo *</label>
-                <div className="relative">
-                  <select
-                    value={form.ciclo}
-                    onChange={e => setForm(p => ({ ...p, ciclo: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    {ciclos.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
+              <Field label="Detalle" name="comoSeEnteroDetalle" placeholder="Nombre de la persona o medio" />
             </div>
           </div>
 
@@ -866,6 +973,27 @@ export default function App() {
           sede: s.sede,
           ciclo: s.ciclo,
           monto: s.monto,
+          codigoMatricula: s.codigoMatricula,
+          apellidoPaterno: s.apellidoPaterno,
+          apellidoMaterno: s.apellidoMaterno,
+          fechaNacimiento: s.fechaNacimiento,
+          lugarNacimiento: s.lugarNacimiento,
+          escuelaProfesional: s.escuelaProfesional,
+          facultad: s.facultad,
+          cicloInicio: s.cicloInicio,
+          cicloDuracion: s.cicloDuracion,
+          cicloTurno: s.cicloTurno,
+          direccion: s.direccion,
+          distrito: s.distrito,
+          provincia: s.provincia,
+          departamento: s.departamento,
+          colegioNombre: s.colegioNombre,
+          colegioDistrito: s.colegioDistrito,
+          colegioProvincia: s.colegioProvincia,
+          colegioDepartamento: s.colegioDepartamento,
+          colegioAnioEgreso: s.colegioAnioEgreso,
+          comoSeEntero: s.comoSeEntero,
+          comoSeEnteroDetalle: s.comoSeEnteroDetalle,
         }),
       });
       if (!res.ok) {
