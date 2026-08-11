@@ -281,6 +281,9 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
 // ─── Matricula Print View ─────────────────────────────────────────────────────
 function MatriculaView({ student, onClose }: { student: Student; onClose: () => void }) {
   const handlePrint = () => window.print();
+  const handleDownloadOficial = () => {
+    window.open(`${API_BASE}/students/${student.id}/ficha-matricula/pdf`, "_blank");
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -288,6 +291,9 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <span className="font-bold text-gray-800">Ficha de Matrícula</span>
           <div className="flex gap-2">
+            <button onClick={handleDownloadOficial} className="flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900 transition">
+              <FileText size={15} /> Ficha Oficial (PDF)
+            </button>
             <button onClick={handlePrint} className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition">
               <Printer size={15} /> Imprimir / PDF
             </button>
@@ -503,6 +509,17 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
           </select>
           <ChevronDown size={13} className="absolute right-2.5 top-3.5 text-gray-400 pointer-events-none" />
         </div>
+        <button
+          onClick={() => {
+            const params = new URLSearchParams();
+            if (filterSede !== "Todas") params.set("sede", filterSede);
+            if (filterEstado !== "Todos") params.set("estado", filterEstado);
+            window.open(`${API_BASE}/students/export/pdf?${params.toString()}`, "_blank");
+          }}
+          className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
+        >
+          <FileText size={16} /> Exportar PDF
+        </button>
         <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-700 to-red-500 text-white rounded-xl text-sm font-semibold hover:from-red-800 hover:to-red-600 transition shadow shadow-red-200">
           <Plus size={16} /> Nuevo Estudiante
         </button>
