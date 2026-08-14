@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Search, Users, CreditCard, MapPin, FileText, Plus, X, ChevronDown,
   Download, Eye, Edit2, Trash2, CheckCircle, Clock, AlertCircle,
@@ -16,15 +16,44 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 // El backend devuelve fechas como ISO completo (2026-03-10T00:00:00.000Z).
 // El frontend espera solo la parte de fecha (2026-03-10), así que normalizamos aquí.
 function normalizeStudent(s: any): Student {
-  return { ...s, fechaMatricula: String(s.fechaMatricula).split("T")[0] };
+  return { ...s, fechaMatricula: String(s?.fechaMatricula || "").split("T")[0] } as Student;
 }
+
 function normalizePayment(p: any): Payment {
   return {
     ...p,
-    studentName: p.student ? `${p.student.nombres} ${p.student.apellidos}` : p.studentName,
+    studentName: p.student ? getFullName(p.student) : p.studentName,
     dni: p.student ? p.student.dni : p.dni,
-    fecha: String(p.fecha).split("T")[0],
-  };
+    fecha: String(p?.fecha || "").split("T")[0],
+  } as Payment;
+}
+
+function formatCurrency(value: number | string) {
+  const num = Number(value || 0);
+  return new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN", minimumFractionDigits: 2 }).format(num);
+}
+
+function getApellidosSafe(s: any) {
+  if (!s) return "";
+  if (s.apellidoPaterno || s.apellidoMaterno) return `${s.apellidoPaterno ?? ""} ${s.apellidoMaterno ?? ""}`.trim();
+  if (s.apellidos) return String(s.apellidos);
+  return "";
+}
+
+function getFullName(s: any) {
+  if (!s) return "";
+  const ap = getApellidosSafe(s);
+  if (ap) return `${s.nombres || ""} ${ap}`.trim();
+  return `${s.nombres || ""}`.trim();
+}
+
+function getInitials(s: any) {
+  try {
+    const ap = getApellidosSafe(s);
+    const firstLetter = (ap || s.nombres || "").trim().charAt(0) || "?";
+    const secondLetter = (s.nombres || "").trim().charAt(0) || "";
+    return `${firstLetter}${secondLetter}`.toUpperCase();
+  } catch (e) { return "?"; }
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -44,6 +73,28 @@ interface Student {
   pagado: boolean;
   monto: number;
   montoPagado: number;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  fechaNacimiento?: string;
+  lugarNacimiento?: string;
+  escuelaProfesional?: string;
+  facultad?: string;
+  cicloInicio?: string;
+  cicloDuracion?: string;
+  cicloTurno?: string;
+  direccion?: string;
+  distrito?: string;
+  provincia?: string;
+  departamento?: string;
+  colegioNombre?: string;
+  colegioDistrito?: string;
+  colegioProvincia?: string;
+  colegioDepartamento?: string;
+  colegioAnioEgreso?: string;
+  comoSeEntero?: string;
+  comoSeEnteroDetalle?: string;
+  codigoMatricula?: string;
+  metodoPago?: string;
 }
 
 interface Payment {
@@ -60,19 +111,19 @@ interface Payment {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const SEDES = ["Lima - Miraflores", "Lima - San Isidro", "Arequipa", "Trujillo", "Cusco", "Piura"];
+const SEDES = ["PUNO", "JULIACA"];
 const CICLOS = ["I Ciclo", "II Ciclo", "III Ciclo", "IV Ciclo", "Intensivo", "Regular"];
 
 // Nota: estos datos ya no se usan directamente — son los mismos que se
 // cargaron en la base de datos con "npm run seed" en el backend. Se dejan
 // aquí solo como referencia.
 const INITIAL_STUDENTS: Student[] = [
-  { id: "1", dni: "74521896", nombres: "Ana María", apellidos: "Torres Quispe", email: "ana.torres@email.com", telefono: "987654321", sede: "Lima - Miraflores", ciclo: "IV Ciclo", estado: "activo", fechaMatricula: "2026-03-10", pagado: true, monto: 450, montoPagado: 450 },
-  { id: "2", dni: "63218745", nombres: "Carlos Eduardo", apellidos: "Mamani Flores", email: "carlos.mamani@email.com", telefono: "976543210", sede: "Arequipa", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-12", pagado: false, monto: 380, montoPagado: 190 },
-  { id: "3", dni: "89456123", nombres: "Lucía Fernanda", apellidos: "Vargas Castro", email: "lucia.vargas@email.com", telefono: "965432109", sede: "Lima - San Isidro", ciclo: "I Ciclo", estado: "pendiente", fechaMatricula: "2026-03-15", pagado: false, monto: 380, montoPagado: 0 },
-  { id: "4", dni: "52174839", nombres: "Diego Alejandro", apellidos: "Huanca Puma", email: "diego.huanca@email.com", telefono: "954321098", sede: "Trujillo", ciclo: "III Ciclo", estado: "activo", fechaMatricula: "2026-02-28", pagado: true, monto: 420, montoPagado: 420 },
-  { id: "5", dni: "71293846", nombres: "Valeria Sofía", apellidos: "Condori Ticona", email: "valeria.condori@email.com", telefono: "943210987", sede: "Cusco", ciclo: "Intensivo", estado: "inactivo", fechaMatricula: "2026-01-20", pagado: true, monto: 550, montoPagado: 550 },
-  { id: "6", dni: "68374920", nombres: "Martín José", apellidos: "Ramos Benites", email: "martin.ramos@email.com", telefono: "932109876", sede: "Lima - Miraflores", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-18", pagado: false, monto: 380, montoPagado: 100 },
+  { id: "1", dni: "74521896", nombres: "Ana María", apellidos: "Torres Quispe", email: "ana.torres@email.com", telefono: "987654321", sede: "PUNO", ciclo: "IV Ciclo", estado: "activo", fechaMatricula: "2026-03-10", pagado: true, monto: 450, montoPagado: 450 },
+  { id: "2", dni: "63218745", nombres: "Carlos Eduardo", apellidos: "Mamani Flores", email: "carlos.mamani@email.com", telefono: "976543210", sede: "JULIACA", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-12", pagado: false, monto: 380, montoPagado: 190 },
+  { id: "3", dni: "89456123", nombres: "Lucía Fernanda", apellidos: "Vargas Castro", email: "lucia.vargas@email.com", telefono: "965432109", sede: "PUNO", ciclo: "I Ciclo", estado: "pendiente", fechaMatricula: "2026-03-15", pagado: false, monto: 380, montoPagado: 0 },
+  { id: "4", dni: "52174839", nombres: "Diego Alejandro", apellidos: "Huanca Puma", email: "diego.huanca@email.com", telefono: "954321098", sede: "JULIACA", ciclo: "III Ciclo", estado: "activo", fechaMatricula: "2026-02-28", pagado: true, monto: 420, montoPagado: 420 },
+  { id: "5", dni: "71293846", nombres: "Valeria Sofía", apellidos: "Condori Ticona", email: "valeria.condori@email.com", telefono: "943210987", sede: "PUNO", ciclo: "Intensivo", estado: "inactivo", fechaMatricula: "2026-01-20", pagado: true, monto: 550, montoPagado: 550 },
+  { id: "6", dni: "68374920", nombres: "Martín José", apellidos: "Ramos Benites", email: "martin.ramos@email.com", telefono: "932109876", sede: "JULIACA", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-18", pagado: false, monto: 380, montoPagado: 100 },
 ];
 
 const INITIAL_PAYMENTS: Payment[] = [
@@ -84,6 +135,25 @@ const INITIAL_PAYMENTS: Payment[] = [
 ];
 
 // ─── Helper Components ────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component<any, { error: any }> {
+  constructor(props: any) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error: any) { return { error }; }
+  componentDidCatch(error: any, info: any) { console.error('ErrorBoundary caught', error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6">
+          <h2 className="text-lg font-bold text-red-700">Se detectó un error en la UI</h2>
+          <pre className="whitespace-pre-wrap mt-2 text-sm text-gray-700">{String(this.state.error)}</pre>
+          <div className="mt-4">
+            <button className="px-4 py-2 rounded bg-gray-200" onClick={() => location.reload()}>Recargar</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 function Badge({ estado }: { estado: string }) {
   const map: Record<string, string> = {
     activo: "bg-green-100 text-green-700",
@@ -94,22 +164,20 @@ function Badge({ estado }: { estado: string }) {
   };
   return (
     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[estado] ?? "bg-gray-100 text-gray-600"}`}>
-      {estado}
+      {String(estado)}
     </span>
   );
 }
 
-// ─── New Student Form ─────────────────────────────────────────────────────────
-function Field({
-  label, name, type = "text", placeholder = "", value, error, onChange,
-}: {
+// Campo de formulario reutilizable (input controlado con label + mensaje de error)
+function Field({ label, name, value, onChange, placeholder = "", error, type = "text" }: {
   label: string;
   name: string;
-  type?: string;
-  placeholder?: string;
   value: string;
-  error?: string;
   onChange: (name: string, value: string) => void;
+  placeholder?: string;
+  error?: string;
+  type?: string;
 }) {
   return (
     <div>
@@ -117,32 +185,64 @@ function Field({
       <input
         type={type}
         value={value}
-        onChange={e => onChange(name, e.target.value)}
         placeholder={placeholder}
-        className={`w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition ${error ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"}`}
+        onChange={e => onChange(name, e.target.value)}
+        className={`w-full px-3 py-2.5 rounded-xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${
+          error ? "border-red-400" : "border-gray-200"
+        }`}
       />
-      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
+function NewStudentForm({ onClose, onSave, sedes, ciclos, initial }: {
   onClose: () => void;
   onSave: (s: Student) => void;
   sedes: string[];
   ciclos: string[];
+  initial?: Partial<Student> | null;
 }) {
-  const [form, setForm] = useState({
-    dni: "", nombres: "", apellidos: "", email: "", telefono: "",
-    sede: sedes[0], ciclo: ciclos[0], monto: "380", metodoPago: "Efectivo",
-  });
+  const [form, setForm] = useState(() => ({
+    dni: initial?.dni ?? "",
+    nombres: initial?.nombres ?? "",
+    apellidoPaterno: initial?.apellidoPaterno ?? "",
+    apellidoMaterno: initial?.apellidoMaterno ?? "",
+    email: initial?.email ?? "",
+    telefono: initial?.telefono ?? "",
+    codigoMatricula: (initial as any)?.codigoMatricula ?? "",
+    fechaNacimiento: initial?.fechaNacimiento ?? "",
+    lugarNacimiento: initial?.lugarNacimiento ?? "",
+    sede: initial?.sede ?? sedes[0] ?? SEDES[0],
+    ciclo: initial?.ciclo ?? ciclos[0] ?? CICLOS[0],
+    monto: String(initial?.monto ?? 380),
+    metodoPago: (initial as any)?.metodoPago ?? "Efectivo",
+    escuelaProfesional: initial?.escuelaProfesional ?? "",
+    facultad: initial?.facultad ?? "",
+    cicloInicio: initial?.cicloInicio ?? "",
+    cicloDuracion: initial?.cicloDuracion ?? "",
+    cicloTurno: initial?.cicloTurno ?? "",
+    direccion: initial?.direccion ?? "",
+    distrito: initial?.distrito ?? "",
+    provincia: initial?.provincia ?? "",
+    departamento: initial?.departamento ?? "",
+    colegioNombre: initial?.colegioNombre ?? "",
+    colegioDistrito: initial?.colegioDistrito ?? "",
+    colegioProvincia: initial?.colegioProvincia ?? "",
+    colegioDepartamento: initial?.colegioDepartamento ?? "",
+    colegioAnioEgreso: initial?.colegioAnioEgreso ?? "",
+    comoSeEntero: initial?.comoSeEntero ?? "",
+    comoSeEnteroDetalle: initial?.comoSeEnteroDetalle ?? "",
+    id: initial?.id ?? undefined,
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.dni || form.dni.length !== 8 || !/^\d+$/.test(form.dni)) e.dni = "DNI debe tener 8 dígitos";
     if (!form.nombres.trim()) e.nombres = "Requerido";
-    if (!form.apellidos.trim()) e.apellidos = "Requerido";
+    if (!form.apellidoPaterno.trim()) e.apellidoPaterno = "Requerido";
+    if (!form.apellidoMaterno.trim()) e.apellidoMaterno = "Requerido";
     if (!form.email.includes("@")) e.email = "Email inválido";
     if (!form.telefono || form.telefono.length < 9) e.telefono = "Teléfono inválido";
     return e;
@@ -151,15 +251,36 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
   const handleSave = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    const student: Student = {
-      id: Date.now().toString(),
+    const student: Student & any = {
+      id: form.id ?? Date.now().toString(),
       dni: form.dni,
       nombres: form.nombres,
-      apellidos: form.apellidos,
       email: form.email,
       telefono: form.telefono,
       sede: form.sede,
       ciclo: form.ciclo,
+      apellidoPaterno: form.apellidoPaterno,
+      apellidoMaterno: form.apellidoMaterno,
+      codigoMatricula: (form as any).codigoMatricula,
+      metodoPago: form.metodoPago,
+      fechaNacimiento: form.fechaNacimiento,
+      lugarNacimiento: form.lugarNacimiento,
+      escuelaProfesional: form.escuelaProfesional,
+      facultad: form.facultad,
+      cicloInicio: form.cicloInicio,
+      cicloDuracion: form.cicloDuracion,
+      cicloTurno: form.cicloTurno,
+      direccion: form.direccion,
+      distrito: form.distrito,
+      provincia: form.provincia,
+      departamento: form.departamento,
+      colegioNombre: form.colegioNombre,
+      colegioDistrito: form.colegioDistrito,
+      colegioProvincia: form.colegioProvincia,
+      colegioDepartamento: form.colegioDepartamento,
+      colegioAnioEgreso: form.colegioAnioEgreso,
+      comoSeEntero: form.comoSeEntero,
+      comoSeEnteroDetalle: form.comoSeEnteroDetalle,
       estado: "pendiente",
       fechaMatricula: new Date().toISOString().split("T")[0],
       pagado: false,
@@ -169,9 +290,7 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
     onSave(student);
   };
 
-  const handleFieldChange = (name: string, value: string) => {
-    setForm(p => ({ ...p, [name]: value }));
-  };
+  const handleFieldChange = (name: string, value: string) => setForm(p => ({ ...p, [name]: value }));
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -202,7 +321,10 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
               <Field label="DNI *" name="dni" placeholder="12345678" value={form.dni} error={errors.dni} onChange={handleFieldChange} />
               <Field label="Teléfono *" name="telefono" placeholder="987654321" value={form.telefono} error={errors.telefono} onChange={handleFieldChange} />
               <Field label="Nombres *" name="nombres" placeholder="Ana María" value={form.nombres} error={errors.nombres} onChange={handleFieldChange} />
-              <Field label="Apellidos *" name="apellidos" placeholder="Torres Quispe" value={form.apellidos} error={errors.apellidos} onChange={handleFieldChange} />
+              <Field label="Apellido Paterno *" name="apellidoPaterno" placeholder="Apellido Paterno" value={form.apellidoPaterno} error={errors.apellidoPaterno} onChange={handleFieldChange} />
+              <Field label="Apellido Materno *" name="apellidoMaterno" placeholder="Apellido Materno" value={form.apellidoMaterno} error={errors.apellidoMaterno} onChange={handleFieldChange} />
+              <Field label="Fecha de Nacimiento" name="fechaNacimiento" type="date" placeholder="" value={form.fechaNacimiento} onChange={handleFieldChange} />
+              <Field label="Lugar de Nacimiento" name="lugarNacimiento" placeholder="Puno" value={form.lugarNacimiento} onChange={handleFieldChange} />
               <div className="sm:col-span-2">
                 <Field label="Correo Electrónico *" name="email" type="email" placeholder="estudiante@email.com" value={form.email} error={errors.email} onChange={handleFieldChange} />
               </div>
@@ -218,28 +340,64 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
                 <div className="relative">
-                  <select
-                    value={form.sede}
-                    onChange={e => setForm(p => ({ ...p, sede: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
+                  <select value={form.sede} onChange={e => setForm(p => ({ ...p, sede: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500">
                     {sedes.map(s => <option key={s}>{s}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
                 </div>
               </div>
               <div>
+                <Field label="Código Matrícula" name="codigoMatricula" placeholder="ABC12" value={(form as any).codigoMatricula} onChange={handleFieldChange} />
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ciclo *</label>
                 <div className="relative">
-                  <select
-                    value={form.ciclo}
-                    onChange={e => setForm(p => ({ ...p, ciclo: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
+                  <select value={form.ciclo} onChange={e => setForm(p => ({ ...p, ciclo: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500">
                     {ciclos.map(c => <option key={c}>{c}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
                 </div>
+              </div>
+              <Field label="Escuela Profesional" name="escuelaProfesional" placeholder="Ingeniería" value={form.escuelaProfesional} onChange={handleFieldChange} />
+              <Field label="Facultad" name="facultad" placeholder="Facultad" value={form.facultad} onChange={handleFieldChange} />
+              <Field label="Ciclo - Inicio" name="cicloInicio" placeholder="2026" value={form.cicloInicio} onChange={handleFieldChange} />
+              <Field label="Ciclo - Duración" name="cicloDuracion" placeholder="4 meses" value={form.cicloDuracion} onChange={handleFieldChange} />
+              <Field label="Ciclo - Turno" name="cicloTurno" placeholder="Mañana/Tarde" value={form.cicloTurno} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Domicilio y Secundaria */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <MapPin size={14} /> Domicilio / Colegio
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Dirección" name="direccion" placeholder="Dirección" value={form.direccion} onChange={handleFieldChange} />
+              <Field label="Distrito" name="distrito" placeholder="Distrito" value={form.distrito} onChange={handleFieldChange} />
+              <Field label="Provincia" name="provincia" placeholder="Provincia" value={form.provincia} onChange={handleFieldChange} />
+              <Field label="Departamento" name="departamento" placeholder="Departamento" value={form.departamento} onChange={handleFieldChange} />
+
+              <Field label="Nombre de la I.E." name="colegioNombre" placeholder="Nombre de la I.E." value={form.colegioNombre} onChange={handleFieldChange} />
+              <Field label="Distrito (IE)" name="colegioDistrito" placeholder="Distrito" value={form.colegioDistrito} onChange={handleFieldChange} />
+              <Field label="Provincia (IE)" name="colegioProvincia" placeholder="Provincia" value={form.colegioProvincia} onChange={handleFieldChange} />
+              <Field label="Departamento (IE)" name="colegioDepartamento" placeholder="Departamento" value={form.colegioDepartamento} onChange={handleFieldChange} />
+              <Field label="Año de Egreso" name="colegioAnioEgreso" placeholder="2023" value={form.colegioAnioEgreso} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Como se enteró */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">¿Cómo se enteró?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <select value={form.comoSeEntero} onChange={e => setForm(p => ({ ...p, comoSeEntero: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm">
+                  <option value="">Seleccione...</option>
+                  <option value="redes">REDES SOCIALES</option>
+                  <option value="radio">RADIO</option>
+                  <option value="tv">T.V.</option>
+                  <option value="otro">Información de otra persona</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Detalle (si aplica)" name="comoSeEnteroDetalle" placeholder="Nombre / detalle" value={form.comoSeEnteroDetalle} onChange={handleFieldChange} />
               </div>
             </div>
           </div>
@@ -290,6 +448,8 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
           </button>
         </div>
       </div>
+
+      {/* Registrar Pago Modal handled in Pagos tab; removed duplicate from NewStudentForm */}
     </div>
   );
 }
@@ -361,15 +521,15 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="flex flex-col">
                 <span className="text-gray-400 text-xs font-medium uppercase">Monto Total</span>
-                <span className="text-gray-800 font-bold text-lg">S/. {student.monto.toFixed(2)}</span>
+                <span className="text-gray-800 font-bold text-lg">{formatCurrency(student.monto)}</span>
               </div>
-              <div className="flex flex-col">
+                <div className="flex flex-col">
                 <span className="text-gray-400 text-xs font-medium uppercase">Monto Pagado</span>
-                <span className="text-green-600 font-bold text-lg">S/. {student.montoPagado.toFixed(2)}</span>
+                <span className="text-green-600 font-bold text-lg">{formatCurrency(student.montoPagado)}</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-400 text-xs font-medium uppercase">Saldo Pendiente</span>
-                <span className="text-red-600 font-bold text-lg">S/. {(student.monto - student.montoPagado).toFixed(2)}</span>
+                <span className="text-red-600 font-bold text-lg">{formatCurrency(student.monto - student.montoPagado)}</span>
               </div>
             </div>
           </div>
@@ -394,7 +554,7 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
 }
 
 // ─── Dashboard Tab ────────────────────────────────────────────────────────────
-function Dashboard({ students, payments }: { students: Student[]; payments: Payment[] }) {
+function Dashboard({ students, payments, sedes }: { students: Student[]; payments: Payment[]; sedes: any[] }) {
   const active = students.filter(s => s.estado === "activo").length;
   const pendingPay = payments.filter(p => p.estado === "pendiente" || p.estado === "vencido").length;
   const totalRecaudado = payments.filter(p => p.estado === "pagado").reduce((a, p) => a + p.monto, 0);
@@ -403,7 +563,7 @@ function Dashboard({ students, payments }: { students: Student[]; payments: Paym
     { label: "Total Estudiantes", value: students.length, icon: Users, color: "from-red-700 to-red-500", sub: `${active} activos` },
     { label: "Matrículas Activas", value: active, icon: GraduationCap, color: "from-gray-800 to-gray-600", sub: "Este periodo" },
     { label: "Pagos Pendientes", value: pendingPay, icon: AlertCircle, color: "from-amber-600 to-amber-400", sub: "Por gestionar" },
-    { label: "Total Recaudado", value: `S/. ${totalRecaudado.toLocaleString()}`, icon: TrendingUp, color: "from-green-700 to-green-500", sub: "Mes actual" },
+    { label: "Total Recaudado", value: formatCurrency(totalRecaudado), icon: TrendingUp, color: "from-green-700 to-green-500", sub: "Mes actual" },
   ];
 
   return (
@@ -439,7 +599,8 @@ function Dashboard({ students, payments }: { students: Student[]; payments: Paym
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><MapPin size={16} className="text-red-600" /> Estudiantes por Sede</h3>
           <div className="space-y-3">
-            {SEDES.map(sede => {
+            {sedes.map((sedeObj: any) => {
+              const sede = sedeObj.nombre;
               const count = students.filter(s => s.sede === sede).length;
               if (!count) return null;
               const pct = Math.round((count / students.length) * 100);
@@ -468,7 +629,7 @@ function Dashboard({ students, payments }: { students: Student[]; payments: Paym
                   <p className="text-xs text-gray-400">{p.concepto}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-gray-800">S/. {p.monto}</p>
+                  <p className="text-sm font-bold text-gray-800">{formatCurrency(p.monto)}</p>
                   <Badge estado={p.estado} />
                 </div>
               </div>
@@ -481,10 +642,13 @@ function Dashboard({ students, payments }: { students: Student[]; payments: Paym
 }
 
 // ─── Estudiantes Tab ──────────────────────────────────────────────────────────
-function Estudiantes({ students, onAdd, onViewMatricula }: {
+function Estudiantes({ students, onAdd, onViewMatricula, sedes, onEdit, onDelete }: {
   students: Student[];
   onAdd: () => void;
   onViewMatricula: (s: Student) => void;
+  sedes: any[];
+  onEdit: (s: Student) => void;
+  onDelete: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [filterSede, setFilterSede] = useState("Todas");
@@ -492,7 +656,8 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
 
   const filtered = students.filter(s => {
     const q = query.toLowerCase();
-    const matchQ = !q || s.dni.includes(q) || s.nombres.toLowerCase().includes(q) || s.apellidos.toLowerCase().includes(q);
+    const ap = (getApellidosSafe(s) || "").toLowerCase();
+    const matchQ = !q || s.dni.includes(q) || s.nombres.toLowerCase().includes(q) || ap.includes(q);
     const matchSede = filterSede === "Todas" || s.sede === filterSede;
     const matchEstado = filterEstado === "Todos" || s.estado === filterEstado;
     return matchQ && matchSede && matchEstado;
@@ -512,10 +677,10 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition"
           />
         </div>
-        <div className="relative">
+            <div className="relative">
           <select value={filterSede} onChange={e => setFilterSede(e.target.value)} className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500">
             <option>Todas</option>
-            {SEDES.map(s => <option key={s}>{s}</option>)}
+            {sedes.map((s: any) => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
           </select>
           <ChevronDown size={13} className="absolute right-2.5 top-3.5 text-gray-400 pointer-events-none" />
         </div>
@@ -558,7 +723,7 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
                   <td className="px-4 py-3 font-mono font-semibold text-gray-700">{s.dni}</td>
                   <td className="px-4 py-3">
                     <div>
-                      <p className="font-semibold text-gray-800">{s.apellidos}</p>
+                      <p className="font-semibold text-gray-800">{getApellidosSafe(s)}</p>
                       <p className="text-gray-500 text-xs">{s.nombres}</p>
                     </div>
                   </td>
@@ -567,10 +732,11 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.fechaMatricula}</td>
                   <td className="px-4 py-3"><Badge estado={s.estado} /></td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <button onClick={() => onViewMatricula(s)} title="Ver ficha" className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition"><FileText size={15} /></button>
-                      <button title="Editar" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition"><Edit2 size={15} /></button>
-                    </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => onViewMatricula(s)} title="Ver ficha" className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition"><FileText size={15} /></button>
+                        <button onClick={() => onEdit(s)} title="Editar" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition"><Edit2 size={15} /></button>
+                        <button onClick={() => onDelete(s.id)} title="Eliminar" className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition"><Trash2 size={15} /></button>
+                      </div>
                   </td>
                 </tr>
               ))}
@@ -589,13 +755,21 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
 }
 
 // ─── Pagos Tab ────────────────────────────────────────────────────────────────
-function Pagos({ payments, students }: { payments: Payment[]; students: Student[] }) {
+function Pagos({ payments, students, sedes, onCreate, onDelete }: { payments: Payment[]; students: Student[]; sedes: any[]; onCreate: (p: any) => Promise<void>; onDelete: (id: string) => Promise<void> | void }) {
   const [query, setQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [form, setForm] = useState({ studentId: "", concepto: "", monto: "", sede: sedes?.[0]?.nombre ?? "", metodoPago: "Efectivo", estado: "pagado" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!form.studentId && students && students.length) setForm(f => ({ ...f, studentId: students[0].id }));
+    if (!form.sede && sedes && sedes.length) setForm(f => ({ ...f, sede: sedes[0].nombre }));
+  }, [students, sedes]);
 
   const filtered = payments.filter(p => {
     const q = query.toLowerCase();
-    const matchQ = !q || p.dni.includes(q) || p.studentName.toLowerCase().includes(q);
+    const matchQ = !q || (p.dni || "").includes(q) || (p.studentName || "").toLowerCase().includes(q);
     const matchE = filterEstado === "Todos" || p.estado === filterEstado;
     return matchQ && matchE;
   });
@@ -603,13 +777,30 @@ function Pagos({ payments, students }: { payments: Payment[]; students: Student[
   const totalPagado = payments.filter(p => p.estado === "pagado").reduce((a, p) => a + p.monto, 0);
   const totalPendiente = payments.filter(p => p.estado !== "pagado").reduce((a, p) => a + p.monto, 0);
 
+  const handleExport = () => {
+    const rows = [
+      ["id", "dni", "studentName", "concepto", "monto", "metodoPago", "fecha", "estado", "sede"],
+      ...filtered.map(p => [p.id, p.dni, p.studentName, p.concepto, p.monto, p.metodoPago, p.fecha, p.estado, p.sede || ""].map(v => String(v).replace(/\"/g, '"'))),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '"')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pagos_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Total Recaudado", value: `S/. ${totalPagado.toLocaleString()}`, color: "text-green-600", bg: "bg-green-50", icon: CheckCircle },
-          { label: "Por Cobrar", value: `S/. ${totalPendiente.toLocaleString()}`, color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
+          { label: "Total Recaudado", value: formatCurrency(totalPagado), color: "text-green-600", bg: "bg-green-50", icon: CheckCircle },
+          { label: "Por Cobrar", value: formatCurrency(totalPendiente), color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
           { label: "Pagos Vencidos", value: payments.filter(p => p.estado === "vencido").length.toString(), color: "text-red-600", bg: "bg-red-50", icon: AlertCircle },
         ].map(({ label, value, color, bg, icon: Icon }) => (
           <div key={label} className={`${bg} rounded-2xl p-4 border border-gray-100`}>
@@ -640,10 +831,10 @@ function Pagos({ payments, students }: { payments: Payment[]; students: Student[
           </select>
           <ChevronDown size={13} className="absolute right-2.5 top-3.5 text-gray-400 pointer-events-none" />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 rounded-xl text-sm font-semibold hover:bg-red-50 transition">
+        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 rounded-xl text-sm font-semibold hover:bg-red-50 transition">
           <Download size={15} /> Exportar
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-700 to-red-500 text-white rounded-xl text-sm font-semibold hover:from-red-800 hover:to-red-600 transition shadow shadow-red-200">
+        <button onClick={() => setShowPaymentModal(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-700 to-red-500 text-white rounded-xl text-sm font-semibold hover:from-red-800 hover:to-red-600 transition shadow shadow-red-200">
           <Plus size={16} /> Registrar Pago
         </button>
       </div>
@@ -654,7 +845,7 @@ function Pagos({ payments, students }: { payments: Payment[]; students: Student[
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {["N° Pago", "DNI", "Estudiante", "Concepto", "Monto", "Método", "Fecha", "Estado"].map(h => (
+                {["N° Pago", "DNI", "Estudiante", "Concepto", "Monto", "Método", "Fecha", "Estado", "Acciones"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -666,10 +857,15 @@ function Pagos({ payments, students }: { payments: Payment[]; students: Student[
                   <td className="px-4 py-3 font-mono font-semibold text-gray-700">{p.dni}</td>
                   <td className="px-4 py-3 font-medium text-gray-800 max-w-[160px] truncate">{p.studentName}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs max-w-[150px] truncate">{p.concepto}</td>
-                  <td className="px-4 py-3 font-bold text-gray-800">S/. {p.monto}</td>
+                  <td className="px-4 py-3 font-bold text-gray-800">{formatCurrency(p.monto)}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{p.metodoPago}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{p.fecha}</td>
                   <td className="px-4 py-3"><Badge estado={p.estado} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button title="Eliminar" onClick={() => { if (confirm('Eliminar pago?')) onDelete(p.id); }} className="p-1 rounded-md hover:bg-red-50 text-red-600"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {!filtered.length && (
@@ -684,13 +880,17 @@ function Pagos({ payments, students }: { payments: Payment[]; students: Student[
 }
 
 // ─── Sedes Tab ────────────────────────────────────────────────────────────────
-function Sedes({ students }: { students: Student[] }) {
-  const sedesData = SEDES.map(sede => ({
-    nombre: sede,
-    total: students.filter(s => s.sede === sede).length,
-    activos: students.filter(s => s.sede === sede && s.estado === "activo").length,
-    recaudado: students.filter(s => s.sede === sede).reduce((a, s) => a + s.montoPagado, 0),
-  })).filter(s => s.total > 0);
+function Sedes({ students, sedes, onCreateSede, onDeleteSede }: { students: Student[]; sedes: any[]; onCreateSede: (n: string) => void; onDeleteSede: (id: string) => void }) {
+  const sedesData = sedes.map(sedeObj => {
+    const nombre = sedeObj.nombre;
+    return {
+      id: sedeObj.id,
+      nombre,
+      total: students.filter(s => s.sede === nombre).length,
+      activos: students.filter(s => s.sede === nombre && s.estado === "activo").length,
+      recaudado: students.filter(s => s.sede === nombre).reduce((a, s) => a + s.montoPagado, 0),
+    };
+  }).filter(s => s.total > 0);
 
   const cityMap: Record<string, string> = {
     "Lima - Miraflores": "Lima",
@@ -716,7 +916,10 @@ function Sedes({ students }: { students: Student[] }) {
                   <p className="text-xs text-gray-400">Academia La Pre Perú</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">{cityMap[sede.nombre]}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">{cityMap[sede.nombre] || sede.nombre}</span>
+                <button onClick={() => onDeleteSede && onDeleteSede(sede.id)} className="p-1 rounded-md hover:bg-red-50 text-red-600"><Trash2 size={14} /></button>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-gray-50 rounded-xl p-2">
@@ -728,7 +931,7 @@ function Sedes({ students }: { students: Student[] }) {
                 <p className="text-xs text-gray-400">Activos</p>
               </div>
               <div className="bg-red-50 rounded-xl p-2">
-                <p className="text-base font-bold text-red-700">S/{sede.recaudado}</p>
+                <p className="text-base font-bold text-red-700">{formatCurrency(sede.recaudado)}</p>
                 <p className="text-xs text-gray-400">Recaudado</p>
               </div>
             </div>
@@ -736,7 +939,10 @@ function Sedes({ students }: { students: Student[] }) {
         ))}
 
         {/* Add Sede Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-all min-h-[160px]">
+        <div onClick={() => {
+            const nombre = prompt("Nombre de la nueva sede:");
+            if (nombre) onCreateSede(nombre);
+          }} className="bg-white rounded-2xl p-5 shadow-sm border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-all min-h-[160px]">
           <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
             <Plus size={20} className="text-gray-400" />
           </div>
@@ -757,7 +963,8 @@ function Matriculas({ students, onAdd, onViewMatricula }: {
 
   const filtered = students.filter(s => {
     const q = query.toLowerCase();
-    return !q || s.dni.includes(q) || s.nombres.toLowerCase().includes(q) || s.apellidos.toLowerCase().includes(q);
+    const ap = (getApellidosSafe(s) || "").toLowerCase();
+    return !q || s.dni.includes(q) || s.nombres.toLowerCase().includes(q) || ap.includes(q);
   });
 
   return (
@@ -784,10 +991,10 @@ function Matriculas({ students, onAdd, onViewMatricula }: {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-gray-800 to-gray-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
-                  {s.apellidos[0]}{s.nombres[0]}
+                  {getInitials(s)}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-sm">{s.apellidos}</p>
+                  <p className="font-bold text-gray-800 text-sm">{getApellidosSafe(s)}</p>
                   <p className="text-xs text-gray-500">{s.nombres}</p>
                 </div>
               </div>
@@ -803,7 +1010,7 @@ function Matriculas({ students, onAdd, onViewMatricula }: {
             <div className="mb-3">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-gray-500">Pago</span>
-                <span className="font-semibold text-gray-700">S/.{s.montoPagado} / S/.{s.monto}</span>
+                <span className="font-semibold text-gray-700">{formatCurrency(s.montoPagado)} / {formatCurrency(s.monto)}</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full">
                 <div className="h-1.5 bg-gradient-to-r from-red-700 to-red-400 rounded-full" style={{ width: `${Math.round((s.montoPagado / s.monto) * 100)}%` }} />
@@ -833,6 +1040,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showNewStudent, setShowNewStudent] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [sedesList, setSedesList] = useState<any[]>([]);
   const [matriculaStudent, setMatriculaStudent] = useState<Student | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -844,20 +1053,30 @@ export default function App() {
       setLoading(true);
       setLoadError(null);
       try {
-        const [studentsRes, paymentsRes] = await Promise.all([
+        const [studentsRes, paymentsRes, sedesRes] = await Promise.all([
           fetch(`${API_BASE}/students`),
           fetch(`${API_BASE}/payments`),
+          fetch(`${API_BASE}/sedes`),
         ]);
+        console.log("loadData: statuses =>", { students: studentsRes.status, payments: paymentsRes.status, sedes: sedesRes.status });
         if (!studentsRes.ok || !paymentsRes.ok) throw new Error("Respuesta no válida del servidor");
         const studentsData = await studentsRes.json();
         const paymentsData = await paymentsRes.json();
         if (!cancelled) {
           setStudents(studentsData.map(normalizeStudent));
           setPayments(paymentsData.map(normalizePayment));
+          if (sedesRes.ok) {
+            const sedesJson = await sedesRes.json();
+            console.log("loadData: sedes count", sedesJson.length);
+            setSedesList(sedesJson);
+          }
         }
       } catch (err) {
+        console.error("loadData error:", err);
         if (!cancelled) {
           setLoadError("No se pudo conectar con el backend. Verifica que esté corriendo en " + API_BASE);
+          // reintentar después de 3s
+          setTimeout(() => { if (!cancelled) loadData(); }, 3000);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -870,29 +1089,176 @@ export default function App() {
 
   const handleSaveStudent = async (s: Student) => {
     try {
-      const res = await fetch(`${API_BASE}/students`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dni: s.dni,
-          nombres: s.nombres,
-          apellidos: s.apellidos,
-          email: s.email,
-          telefono: s.telefono,
-          sede: s.sede,
-          ciclo: s.ciclo,
-          monto: s.monto,
-        }),
-      });
+      let res;
+      if (editingStudent) {
+        // actualizar
+        res = await fetch(`${API_BASE}/students/${editingStudent.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dni: s.dni,
+            nombres: s.nombres,
+            apellidoPaterno: (s as any).apellidoPaterno,
+            apellidoMaterno: (s as any).apellidoMaterno,
+            codigoMatricula: (s as any).codigoMatricula,
+            metodoPago: (s as any).metodoPago,
+            fechaNacimiento: (s as any).fechaNacimiento,
+            lugarNacimiento: (s as any).lugarNacimiento,
+            email: s.email,
+            telefono: s.telefono,
+            sede: s.sede,
+            ciclo: s.ciclo,
+            escuelaProfesional: (s as any).escuelaProfesional,
+            facultad: (s as any).facultad,
+            cicloInicio: (s as any).cicloInicio,
+            cicloDuracion: (s as any).cicloDuracion,
+            cicloTurno: (s as any).cicloTurno,
+            direccion: (s as any).direccion,
+            distrito: (s as any).distrito,
+            provincia: (s as any).provincia,
+            departamento: (s as any).departamento,
+            colegioNombre: (s as any).colegioNombre,
+            colegioDistrito: (s as any).colegioDistrito,
+            colegioProvincia: (s as any).colegioProvincia,
+            colegioDepartamento: (s as any).colegioDepartamento,
+            colegioAnioEgreso: (s as any).colegioAnioEgreso,
+            comoSeEntero: (s as any).comoSeEntero,
+            comoSeEnteroDetalle: (s as any).comoSeEnteroDetalle,
+            monto: s.monto,
+          }),
+        });
+      } else {
+        // crear
+        res = await fetch(`${API_BASE}/students`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dni: s.dni,
+            nombres: s.nombres,
+            apellidoPaterno: (s as any).apellidoPaterno,
+            apellidoMaterno: (s as any).apellidoMaterno,
+            codigoMatricula: (s as any).codigoMatricula,
+            metodoPago: (s as any).metodoPago,
+            fechaNacimiento: (s as any).fechaNacimiento,
+            lugarNacimiento: (s as any).lugarNacimiento,
+            email: s.email,
+            telefono: s.telefono,
+            sede: s.sede,
+            ciclo: s.ciclo,
+            escuelaProfesional: (s as any).escuelaProfesional,
+            facultad: (s as any).facultad,
+            cicloInicio: (s as any).cicloInicio,
+            cicloDuracion: (s as any).cicloDuracion,
+            cicloTurno: (s as any).cicloTurno,
+            direccion: (s as any).direccion,
+            distrito: (s as any).distrito,
+            provincia: (s as any).provincia,
+            departamento: (s as any).departamento,
+            colegioNombre: (s as any).colegioNombre,
+            colegioDistrito: (s as any).colegioDistrito,
+            colegioProvincia: (s as any).colegioProvincia,
+            colegioDepartamento: (s as any).colegioDepartamento,
+            colegioAnioEgreso: (s as any).colegioAnioEgreso,
+            comoSeEntero: (s as any).comoSeEntero,
+            comoSeEnteroDetalle: (s as any).comoSeEnteroDetalle,
+            monto: s.monto,
+          }),
+        });
+      }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "No se pudo guardar el estudiante");
+        const bodyText = await res.text().catch(() => "");
+        console.error("handleSaveStudent failed", { status: res.status, bodyText });
+        let body = {} as any;
+        try { body = JSON.parse(bodyText); } catch {}
+        throw new Error(body.error || `No se pudo guardar el estudiante (status ${res.status})`);
       }
       const created = await res.json();
-      setStudents(prev => [...prev, normalizeStudent(created)]);
+      // actualizar lista de estudiantes (crear o reemplazar)
+      setStudents(prev => {
+        const filtered = prev.filter(p => p.id !== created.id);
+        return [...filtered, normalizeStudent(created)];
+      });
       setShowNewStudent(false);
+      setEditingStudent(null);
     } catch (err: any) {
       alert(err.message || "No se pudo guardar el estudiante. Verifica que el backend esté corriendo.");
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    if (!confirm("¿Eliminar estudiante? Esta acción es irreversible.")) return;
+    try {
+      const res = await fetch(`${API_BASE}/students/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => "");
+        console.error("handleDeleteStudent failed", { id, status: res.status, bodyText });
+        throw new Error(`No se pudo eliminar (status ${res.status})`);
+      }
+      setStudents(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      console.error("delete error", err);
+      alert(err.message || "Error al eliminar estudiante. Mira la consola para más detalles.");
+    }
+  };
+
+  const handleCreateSede = async (nombre: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/sedes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "No se pudo crear sede");
+      }
+      const created = await res.json();
+      setSedesList(prev => [...prev, created]);
+    } catch (err: any) {
+      alert(err.message || "Error al crear sede");
+    }
+  };
+
+  const handleDeleteSede = async (id: string) => {
+    if (!confirm("¿Eliminar sede?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/sedes/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("No se pudo eliminar sede");
+      setSedesList(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Error al eliminar sede");
+    }
+  };
+
+  // Pagos: crear pago y refrescar datos
+  const handleCreatePayment = async (payload: any) => {
+    try {
+      console.log("Creating payment, payload:", payload);
+      const res = await fetch(`${API_BASE}/payments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      console.log("Payments POST status:", res.status);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error("Payments POST error body:", body);
+        throw new Error(body.error || "No se pudo crear el pago");
+      }
+      const created = await res.json().catch(() => null);
+      console.log("Pago creado:", created);
+      // refrescar pagos y estudiantes
+      const [paymentsRes, studentsRes] = await Promise.all([fetch(`${API_BASE}/payments`), fetch(`${API_BASE}/students`)]);
+      if (paymentsRes.ok) setPayments((await paymentsRes.json()).map(normalizePayment));
+      if (studentsRes.ok) setStudents((await studentsRes.json()).map(normalizeStudent));
+    } catch (err: any) {
+      alert(err.message || "Error al crear pago");
+      throw err;
+    }
+  };
+
+  const handleDeletePayment = async (id: string) => {
+    if (!confirm("¿Eliminar pago?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/payments/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("No se pudo eliminar pago");
+      const [paymentsRes, studentsRes] = await Promise.all([fetch(`${API_BASE}/payments`), fetch(`${API_BASE}/students`)]);
+      if (paymentsRes.ok) setPayments((await paymentsRes.json()).map(normalizePayment));
+      if (studentsRes.ok) setStudents((await studentsRes.json()).map(normalizeStudent));
+    } catch (err: any) {
+      alert(err.message || "Error al eliminar pago");
     }
   };
 
@@ -913,6 +1279,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gray-100 font-[Inter,sans-serif]">
       {/* Print Styles */}
       <style>{`
@@ -994,12 +1361,15 @@ export default function App() {
               Cargando datos del servidor...
             </div>
           )}
-          {activeTab === "dashboard" && <Dashboard students={students} payments={payments} />}
+          {activeTab === "dashboard" && <Dashboard students={students} payments={payments} sedes={sedesList} />}
           {activeTab === "estudiantes" && (
             <Estudiantes
               students={students}
               onAdd={() => setShowNewStudent(true)}
               onViewMatricula={setMatriculaStudent}
+              sedes={sedesList}
+              onEdit={(s) => { setEditingStudent(s); setShowNewStudent(true); }}
+              onDelete={handleDeleteStudent}
             />
           )}
           {activeTab === "matriculas" && (
@@ -1009,18 +1379,19 @@ export default function App() {
               onViewMatricula={setMatriculaStudent}
             />
           )}
-          {activeTab === "pagos" && <Pagos payments={payments} students={students} />}
-          {activeTab === "sedes" && <Sedes students={students} />}
+          {activeTab === "pagos" && <Pagos payments={payments} students={students} sedes={sedesList} onCreate={handleCreatePayment} onDelete={handleDeletePayment} />}
+          {activeTab === "sedes" && <Sedes students={students} sedes={sedesList} onCreateSede={handleCreateSede} onDeleteSede={handleDeleteSede} />}
         </main>
       </div>
 
       {/* Modals */}
       {showNewStudent && (
         <NewStudentForm
-          onClose={() => setShowNewStudent(false)}
+          onClose={() => { setShowNewStudent(false); setEditingStudent(null); }}
           onSave={handleSaveStudent}
-          sedes={SEDES}
+          sedes={sedesList.map((s: any) => s.nombre)}
           ciclos={CICLOS}
+          initial={editingStudent}
         />
       )}
       {matriculaStudent && (
@@ -1030,5 +1401,6 @@ export default function App() {
         />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
