@@ -35,8 +35,18 @@ async function main() {
     ],
   });
 
+  // Crear sedes (si no existen)
+  await prisma.sede.createMany({
+    data: [
+      { nombre: "Puno" },
+      { nombre: "Juliaca" },
+    ],
+    skipDuplicates: true,
+  });
+
   console.log("✅ Base de datos poblada con datos de ejemplo");
 }
+
 
 main()
   .catch((e) => {

@@ -100,9 +100,12 @@ export async function generateFichaMatriculaPdf(req: Request, res: Response) {
   // Datos personales
   y = codY + boxSize + 25;
   const colW = contentW / 2 - 10;
-  labeledField(doc, marginX, y, contentW, "APELLIDO PATERNO", student.apellidoPaterno || "");
+  const apellidoPaternoVal = student.apellidoPaterno || (student.apellidos ? String(student.apellidos).split(" ")[0] : "");
+  const apellidoMaternoVal = student.apellidoMaterno || (student.apellidos ? String(student.apellidos).split(" ").slice(1).join(" ") : "");
+
+  labeledField(doc, marginX, y, contentW, "APELLIDO PATERNO", apellidoPaternoVal || "");
   y += 32;
-  labeledField(doc, marginX, y, contentW, "APELLIDO MATERNO", student.apellidoMaterno || "");
+  labeledField(doc, marginX, y, contentW, "APELLIDO MATERNO", apellidoMaternoVal || "");
   y += 32;
   labeledField(doc, marginX, y, contentW, "NOMBRES", student.nombres);
   y += 32;
@@ -208,7 +211,7 @@ export async function generateFichaMatriculaPdf(req: Request, res: Response) {
     .fillColor(CORAL)
     .text("CARTA DE COMPROMISO", marginX, 40, { align: "center", width: contentW });
 
-  const nombreCompleto = `${student.apellidoPaterno || ""} ${student.apellidoMaterno || ""} ${student.nombres}`.trim();
+  const nombreCompleto = `${apellidoPaternoVal || ""} ${apellidoMaternoVal || ""} ${student.nombres}`.trim();
   const domicilioCompleto = [student.direccion, student.distrito, student.provincia, student.departamento]
     .filter(Boolean)
     .join(", ");

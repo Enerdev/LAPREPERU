@@ -9,43 +9,43 @@ datasource db {
 }
 
 model Student {
-  id             String       @id @default(cuid())
-  dni            String       @unique
-  nombres        String
-  apellidos      String
-  email          String
-  telefono       String
-  sede           String
-  ciclo          String
-  estado         EstadoAlumno @default(pendiente)
-  fechaMatricula DateTime     @default(now())
-  pagado         Boolean      @default(false)
-  monto          Float
-  montoPagado    Float        @default(0)
-  codigoMatricula String?      @unique
-  apellidoPaterno String?
-  apellidoMaterno String?
-  fechaNacimiento DateTime?
-  lugarNacimiento String?
-  escuelaProfesional String?
-  facultad      String?
-  cicloInicio   String?
-  cicloDuracion String?
-  cicloTurno    String?
-  direccion     String?
-  distrito      String?
-  provincia     String?
-  departamento   String?
-  colegioNombre String?
-  colegioDistrito String?
-  colegioProvincia String?
+  id                  String       @id @default(cuid())
+  dni                 String       @unique
+  nombres             String
+  apellidos           String
+  email               String
+  telefono            String
+  sede                String
+  ciclo               String
+  estado              EstadoAlumno @default(pendiente)
+  fechaMatricula      DateTime     @default(now())
+  pagado              Boolean      @default(false)
+  monto               Float
+  montoPagado         Float        @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  apellidoMaterno     String?
+  apellidoPaterno     String?
+  cicloDuracion       String?
+  cicloInicio         String?
+  cicloTurno          String?
+  codigoMatricula     String?      @unique
+  colegioAnioEgreso   String?
   colegioDepartamento String?
-  colegioAnioEgreso String?
-  comoSeEntero  String?
+  colegioDistrito     String?
+  colegioNombre       String?
+  colegioProvincia    String?
+  comoSeEntero        String?
   comoSeEnteroDetalle String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  payments       Payment[]
+  departamento        String?
+  direccion           String?
+  distrito            String?
+  escuelaProfesional  String?
+  facultad            String?
+  fechaNacimiento     DateTime?
+  lugarNacimiento     String?
+  provincia           String?
+  payments            Payment[]
 
   @@map("students")
 }
@@ -64,6 +64,15 @@ model Payment {
   student    Student    @relation(fields: [studentId], references: [id])
 
   @@map("payments")
+}
+
+model Sede {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sedes")
 }
 
 enum EstadoAlumno {

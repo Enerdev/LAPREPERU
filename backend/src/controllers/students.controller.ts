@@ -149,7 +149,8 @@ export async function createStudent(req: Request, res: Response) {
     comoSeEntero, comoSeEnteroDetalle,
   } = req.body;
 
-  if (!dni || !nombres || !apellidos || !email || !telefono || !sede || !ciclo || monto == null) {
+  // aceptar apellidos completos o paterno+materno
+  if (!dni || !nombres || !(apellidos || (apellidoPaterno && apellidoMaterno)) || !email || !telefono || !sede || !ciclo || monto == null) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
   }
 
@@ -158,22 +159,42 @@ export async function createStudent(req: Request, res: Response) {
   }
 
   try {
+    const resolvedApellidos = apellidos ?? `${apellidoPaterno} ${apellidoMaterno}`.trim();
+
     const student = await prisma.student.create({
       data: {
-        dni, nombres, apellidos, email, telefono, sede, ciclo,
+        dni,
+        nombres,
+        apellidos: resolvedApellidos,
+        email,
+        telefono,
+        sede,
+        ciclo,
         monto: Number(monto),
         montoPagado: 0,
         estado: "pendiente",
         pagado: false,
         codigoMatricula: codigoMatricula || undefined,
-        apellidoPaterno, apellidoMaterno,
+        apellidoPaterno,
+        apellidoMaterno,
         fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
         lugarNacimiento,
-        escuelaProfesional, facultad,
-        cicloInicio, cicloDuracion, cicloTurno,
-        direccion, distrito, provincia, departamento,
-        colegioNombre, colegioDistrito, colegioProvincia, colegioDepartamento, colegioAnioEgreso,
-        comoSeEntero, comoSeEnteroDetalle,
+        escuelaProfesional,
+        facultad,
+        cicloInicio,
+        cicloDuracion,
+        cicloTurno,
+        direccion,
+        distrito,
+        provincia,
+        departamento,
+        colegioNombre,
+        colegioDistrito,
+        colegioProvincia,
+        colegioDepartamento,
+        colegioAnioEgreso,
+        comoSeEntero,
+        comoSeEnteroDetalle,
       },
     });
     res.status(201).json(student);
@@ -192,22 +213,97 @@ export async function updateStudent(req: Request, res: Response) {
   }
 
   try {
+    console.log("updateStudent: id=", req.params.id, "body=", req.body);
+    const updateData = { ...req.body } as any;
+    if (updateData.apellidoPaterno || updateData.apellidoMaterno) {
+      updateData.apellidos = `${updateData.apellidoPaterno || ""} ${updateData.apellidoMaterno || ""}`.trim();
+    }
+
+    // Normalizar tipos: convertir fechas y números, eliminar cadenas vacías
+    const dateFields = ["fechaNacimiento", "fechaMatricula"];
+    for (const f of dateFields) {
+      if (updateData[f] === "" || updateData[f] === null) delete updateData[f];
+      else if (updateData[f]) updateData[f] = new Date(updateData[f]);
+    }
+    if (updateData.monto !== undefined) {
+      if (updateData.monto === "" || updateData.monto === null) delete updateData.monto;
+      else updateData.monto = Number(updateData.monto);
+    }
+    if (updateData.montoPagado !== undefined) {
+      if (updateData.montoPagado === "" || updateData.montoPagado === null) delete updateData.montoPagado;
+      else updateData.montoPagado = Number(updateData.montoPagado);
+    }
+
+    // Sólo permitir campos definidos en el modelo Student (evitar pasar 'metodoPago' u otros)
+    const allowed = new Set([
+      "dni",
+      "nombres",
+      "apellidos",
+      "email",
+      "telefono",
+      "sede",
+      "ciclo",
+      "estado",
+      "fechaMatricula",
+      "pagado",
+      "monto",
+      "montoPagado",
+      "apellidoMaterno",
+      "apellidoPaterno",
+      "cicloDuracion",
+      "cicloInicio",
+      "cicloTurno",
+      "codigoMatricula",
+      "colegioAnioEgreso",
+      "colegioDepartamento",
+      "colegioDistrito",
+      "colegioNombre",
+      "colegioProvincia",
+      "comoSeEntero",
+      "comoSeEnteroDetalle",
+      "departamento",
+      "direccion",
+      "distrito",
+      "escuelaProfesional",
+      "facultad",
+      "fechaNacimiento",
+      "lugarNacimiento",
+      "provincia",
+    ]);
+
+    const dataToUpdate: any = {};
+    for (const [k, v] of Object.entries(updateData)) {
+      if (allowed.has(k) && v !== undefined) dataToUpdate[k] = v;
+    }
+
     const student = await prisma.student.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: dataToUpdate,
     });
-    res.json(student);
-  } catch {
-    res.status(404).json({ error: "Alumno no encontrado" });
+    return res.json(student);
+  } catch (err: any) {
+    console.error("updateStudent error:", err?.message ?? err);
+    if (err?.code === "P2025") return res.status(404).json({ error: "Alumno no encontrado" });
+    return res.status(500).json({ error: "Error al actualizar alumno" });
   }
 }
 
 // DELETE /api/students/:id
 export async function deleteStudent(req: Request, res: Response) {
   try {
-    await prisma.student.delete({ where: { id: req.params.id } });
-    res.status(204).send();
-  } catch {
-    res.status(404).json({ error: "Alumno no encontrado" });
+    console.log("deleteStudent: id=", req.params.id);
+    const id = req.params.id;
+    // Eliminar pagos relacionados primero para evitar violación de FK
+    try {
+      await prisma.payment.deleteMany({ where: { studentId: id } });
+    } catch (e) {
+      console.warn("deleteStudent: could not delete payments", e);
+    }
+    await prisma.student.delete({ where: { id } });
+    return res.status(204).send();
+  } catch (err: any) {
+    console.error("deleteStudent error:", err?.message ?? err);
+    if (err?.code === "P2025") return res.status(404).json({ error: "Alumno no encontrado" });
+    return res.status(500).json({ error: "Error al eliminar alumno" });
   }
 }
