@@ -9,12 +9,8 @@ import logoImg from "@/imports/image.png";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 
 // ─── API ─────────────────────────────────────────────────────────────────────
-// URL del backend. Si despliegas el backend en otro lado, cambia esta variable
-// (o usa un .env con VITE_API_URL, ver README del frontend).
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
-// El backend devuelve fechas como ISO completo (2026-03-10T00:00:00.000Z).
-// El frontend espera solo la parte de fecha (2026-03-10), así que normalizamos aquí.
 function normalizeStudent(s: any): Student {
   return { ...s, fechaMatricula: String(s.fechaMatricula).split("T")[0] };
 }
@@ -34,7 +30,7 @@ interface Student {
   id: string;
   dni: string;
   nombres: string;
-  apellidos: string;
+  apellidos: string; // combinado, se sigue usando en tablas/listas (derivado de paterno+materno)
   email: string;
   telefono: string;
   sede: string;
@@ -44,6 +40,27 @@ interface Student {
   pagado: boolean;
   monto: number;
   montoPagado: number;
+  codigoMatricula?: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string;
+  fechaNacimiento?: string;
+  lugarNacimiento?: string;
+  escuelaProfesional?: string;
+  facultad?: string;
+  cicloInicio?: string;
+  cicloDuracion?: string;
+  cicloTurno?: string;
+  direccion?: string;
+  distrito?: string;
+  provincia?: string;
+  departamento?: string;
+  colegioNombre?: string;
+  colegioDistrito?: string;
+  colegioProvincia?: string;
+  colegioDepartamento?: string;
+  colegioAnioEgreso?: string;
+  comoSeEntero?: string;
+  comoSeEnteroDetalle?: string;
 }
 
 interface Payment {
@@ -63,26 +80,6 @@ interface Payment {
 const SEDES = ["Lima - Miraflores", "Lima - San Isidro", "Arequipa", "Trujillo", "Cusco", "Piura"];
 const CICLOS = ["I Ciclo", "II Ciclo", "III Ciclo", "IV Ciclo", "Intensivo", "Regular"];
 
-// Nota: estos datos ya no se usan directamente — son los mismos que se
-// cargaron en la base de datos con "npm run seed" en el backend. Se dejan
-// aquí solo como referencia.
-const INITIAL_STUDENTS: Student[] = [
-  { id: "1", dni: "74521896", nombres: "Ana María", apellidos: "Torres Quispe", email: "ana.torres@email.com", telefono: "987654321", sede: "Lima - Miraflores", ciclo: "IV Ciclo", estado: "activo", fechaMatricula: "2026-03-10", pagado: true, monto: 450, montoPagado: 450 },
-  { id: "2", dni: "63218745", nombres: "Carlos Eduardo", apellidos: "Mamani Flores", email: "carlos.mamani@email.com", telefono: "976543210", sede: "Arequipa", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-12", pagado: false, monto: 380, montoPagado: 190 },
-  { id: "3", dni: "89456123", nombres: "Lucía Fernanda", apellidos: "Vargas Castro", email: "lucia.vargas@email.com", telefono: "965432109", sede: "Lima - San Isidro", ciclo: "I Ciclo", estado: "pendiente", fechaMatricula: "2026-03-15", pagado: false, monto: 380, montoPagado: 0 },
-  { id: "4", dni: "52174839", nombres: "Diego Alejandro", apellidos: "Huanca Puma", email: "diego.huanca@email.com", telefono: "954321098", sede: "Trujillo", ciclo: "III Ciclo", estado: "activo", fechaMatricula: "2026-02-28", pagado: true, monto: 420, montoPagado: 420 },
-  { id: "5", dni: "71293846", nombres: "Valeria Sofía", apellidos: "Condori Ticona", email: "valeria.condori@email.com", telefono: "943210987", sede: "Cusco", ciclo: "Intensivo", estado: "inactivo", fechaMatricula: "2026-01-20", pagado: true, monto: 550, montoPagado: 550 },
-  { id: "6", dni: "68374920", nombres: "Martín José", apellidos: "Ramos Benites", email: "martin.ramos@email.com", telefono: "932109876", sede: "Lima - Miraflores", ciclo: "II Ciclo", estado: "activo", fechaMatricula: "2026-03-18", pagado: false, monto: 380, montoPagado: 100 },
-];
-
-const INITIAL_PAYMENTS: Payment[] = [
-  { id: "P001", studentId: "1", studentName: "Ana María Torres Quispe", dni: "74521896", concepto: "Mensualidad Marzo 2026", monto: 450, fecha: "2026-03-10", estado: "pagado", sede: "Lima - Miraflores", metodoPago: "Transferencia" },
-  { id: "P002", studentId: "2", studentName: "Carlos Eduardo Mamani Flores", dni: "63218745", concepto: "Mensualidad Marzo 2026 (50%)", monto: 190, fecha: "2026-03-12", estado: "pagado", sede: "Arequipa", metodoPago: "Efectivo" },
-  { id: "P003", studentId: "3", studentName: "Lucía Fernanda Vargas Castro", dni: "89456123", concepto: "Mensualidad Marzo 2026", monto: 380, fecha: "2026-03-15", estado: "pendiente", sede: "Lima - San Isidro", metodoPago: "-" },
-  { id: "P004", studentId: "4", studentName: "Diego Alejandro Huanca Puma", dni: "52174839", concepto: "Mensualidad Febrero 2026", monto: 420, fecha: "2026-02-28", estado: "pagado", sede: "Trujillo", metodoPago: "Yape" },
-  { id: "P005", studentId: "6", studentName: "Martín José Ramos Benites", dni: "68374920", concepto: "Mensualidad Marzo 2026", monto: 380, fecha: "2026-03-18", estado: "vencido", sede: "Lima - Miraflores", metodoPago: "-" },
-];
-
 // ─── Helper Components ────────────────────────────────────────────────────────
 function Badge({ estado }: { estado: string }) {
   const map: Record<string, string> = {
@@ -99,7 +96,8 @@ function Badge({ estado }: { estado: string }) {
   );
 }
 
-// ─── New Student Form ─────────────────────────────────────────────────────────
+// Field vive AFUERA de NewStudentForm a propósito: si se define adentro,
+// React lo recrea en cada tecla presionada y el input pierde el foco.
 function Field({
   label, name, type = "text", placeholder = "", value, error, onChange,
 }: {
@@ -126,6 +124,7 @@ function Field({
   );
 }
 
+// ─── New Student Form (mismo orden que la Ficha de Matrícula física) ─────────
 function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
   onClose: () => void;
   onSave: (s: Student) => void;
@@ -133,18 +132,58 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
   ciclos: string[];
 }) {
   const [form, setForm] = useState({
-    dni: "", nombres: "", apellidos: "", email: "", telefono: "",
+    dni: "", nombres: "", email: "", telefono: "",
     sede: sedes[0], ciclo: ciclos[0], monto: "380", metodoPago: "Efectivo",
+    codigoMatricula: "",
+    apellidoPaterno: "",
+    apellidoMaterno: "",
+    fechaNacimiento: "",
+    lugarNacimiento: "",
+    escuelaProfesional: "",
+    facultad: "",
+    cicloInicio: "",
+    cicloDuracion: "",
+    cicloTurno: "",
+    direccion: "",
+    distrito: "",
+    provincia: "",
+    departamento: "",
+    colegioNombre: "",
+    colegioDistrito: "",
+    colegioProvincia: "",
+    colegioDepartamento: "",
+    colegioAnioEgreso: "",
+    comoSeEntero: "redes",
+    comoSeEnteroDetalle: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleFieldChange = (name: string, value: string) => {
+    setForm(p => ({ ...p, [name]: value }));
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.dni || form.dni.length !== 8 || !/^\d+$/.test(form.dni)) e.dni = "DNI debe tener 8 dígitos";
+    if (!form.apellidoPaterno.trim()) e.apellidoPaterno = "Requerido";
+    if (!form.apellidoMaterno.trim()) e.apellidoMaterno = "Requerido";
     if (!form.nombres.trim()) e.nombres = "Requerido";
-    if (!form.apellidos.trim()) e.apellidos = "Requerido";
     if (!form.email.includes("@")) e.email = "Email inválido";
     if (!form.telefono || form.telefono.length < 9) e.telefono = "Teléfono inválido";
+    if (!form.codigoMatricula.trim()) e.codigoMatricula = "Requerido";
+    if (!form.fechaNacimiento.trim()) e.fechaNacimiento = "Requerido";
+    if (!form.lugarNacimiento.trim()) e.lugarNacimiento = "Requerido";
+    if (!form.direccion.trim()) e.direccion = "Requerido";
+    if (!form.distrito.trim()) e.distrito = "Requerido";
+    if (!form.provincia.trim()) e.provincia = "Requerido";
+    if (!form.departamento.trim()) e.departamento = "Requerido";
+    if (!form.colegioNombre.trim()) e.colegioNombre = "Requerido";
+    if (!form.colegioDistrito.trim()) e.colegioDistrito = "Requerido";
+    if (!form.colegioProvincia.trim()) e.colegioProvincia = "Requerido";
+    if (!form.colegioDepartamento.trim()) e.colegioDepartamento = "Requerido";
+    if (!form.colegioAnioEgreso.trim()) e.colegioAnioEgreso = "Requerido";
+    if (!form.escuelaProfesional.trim()) e.escuelaProfesional = "Requerido";
+    if (!form.facultad.trim()) e.facultad = "Requerido";
     return e;
   };
 
@@ -155,7 +194,7 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
       id: Date.now().toString(),
       dni: form.dni,
       nombres: form.nombres,
-      apellidos: form.apellidos,
+      apellidos: `${form.apellidoPaterno} ${form.apellidoMaterno}`,
       email: form.email,
       telefono: form.telefono,
       sede: form.sede,
@@ -165,12 +204,29 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
       pagado: false,
       monto: Number(form.monto),
       montoPagado: 0,
+      codigoMatricula: form.codigoMatricula,
+      apellidoPaterno: form.apellidoPaterno,
+      apellidoMaterno: form.apellidoMaterno,
+      fechaNacimiento: form.fechaNacimiento,
+      lugarNacimiento: form.lugarNacimiento,
+      escuelaProfesional: form.escuelaProfesional,
+      facultad: form.facultad,
+      cicloInicio: form.cicloInicio,
+      cicloDuracion: form.cicloDuracion,
+      cicloTurno: form.cicloTurno,
+      direccion: form.direccion,
+      distrito: form.distrito,
+      provincia: form.provincia,
+      departamento: form.departamento,
+      colegioNombre: form.colegioNombre,
+      colegioDistrito: form.colegioDistrito,
+      colegioProvincia: form.colegioProvincia,
+      colegioDepartamento: form.colegioDepartamento,
+      colegioAnioEgreso: form.colegioAnioEgreso,
+      comoSeEntero: form.comoSeEntero,
+      comoSeEnteroDetalle: form.comoSeEnteroDetalle,
     };
     onSave(student);
-  };
-
-  const handleFieldChange = (name: string, value: string) => {
-    setForm(p => ({ ...p, [name]: value }));
   };
 
   return (
@@ -184,7 +240,7 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
             </div>
             <div>
               <h2 className="text-white font-bold text-lg">Nuevo Estudiante</h2>
-              <p className="text-red-200 text-xs">Academia Preuniversitaria La Pre Perú</p>
+              <p className="text-red-200 text-xs">Ficha de Matrícula — Academia Preuniversitaria La Pre Perú</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white transition p-1">
@@ -193,47 +249,58 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Datos Personales */}
+          {/* Código de matrícula */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <FileText size={14} /> Código
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Código de Matrícula *" name="codigoMatricula" placeholder="MAT-0001" value={form.codigoMatricula} error={errors.codigoMatricula} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Datos Personales — mismo orden que la ficha física */}
           <div>
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
               <User size={14} /> Datos Personales
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Apellido Paterno *" name="apellidoPaterno" placeholder="Mamani" value={form.apellidoPaterno} error={errors.apellidoPaterno} onChange={handleFieldChange} />
+              <Field label="Apellido Materno *" name="apellidoMaterno" placeholder="Maquera" value={form.apellidoMaterno} error={errors.apellidoMaterno} onChange={handleFieldChange} />
+              <div className="sm:col-span-2">
+                <Field label="Nombres *" name="nombres" placeholder="Lena Luciana" value={form.nombres} error={errors.nombres} onChange={handleFieldChange} />
+              </div>
+              <Field label="Fecha de Nacimiento *" name="fechaNacimiento" type="date" placeholder="" value={form.fechaNacimiento} error={errors.fechaNacimiento} onChange={handleFieldChange} />
+              <Field label="Lugar de Nacimiento *" name="lugarNacimiento" placeholder="Tacna" value={form.lugarNacimiento} error={errors.lugarNacimiento} onChange={handleFieldChange} />
               <Field label="DNI *" name="dni" placeholder="12345678" value={form.dni} error={errors.dni} onChange={handleFieldChange} />
               <Field label="Teléfono *" name="telefono" placeholder="987654321" value={form.telefono} error={errors.telefono} onChange={handleFieldChange} />
-              <Field label="Nombres *" name="nombres" placeholder="Ana María" value={form.nombres} error={errors.nombres} onChange={handleFieldChange} />
-              <Field label="Apellidos *" name="apellidos" placeholder="Torres Quispe" value={form.apellidos} error={errors.apellidos} onChange={handleFieldChange} />
               <div className="sm:col-span-2">
                 <Field label="Correo Electrónico *" name="email" type="email" placeholder="estudiante@email.com" value={form.email} error={errors.email} onChange={handleFieldChange} />
               </div>
             </div>
           </div>
 
-          {/* Datos Académicos */}
+          {/* Escuela profesional / Facultad */}
           <div>
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <BookOpen size={14} /> Datos Académicos
+              <BookOpen size={14} /> Escuela Profesional a la que Postula
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
-                <div className="relative">
-                  <select
-                    value={form.sede}
-                    onChange={e => setForm(p => ({ ...p, sede: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    {sedes.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
+              <Field label="Escuela Profesional *" name="escuelaProfesional" placeholder="Biomédicas" value={form.escuelaProfesional} error={errors.escuelaProfesional} onChange={handleFieldChange} />
+              <Field label="Facultad *" name="facultad" placeholder="Internado" value={form.facultad} error={errors.facultad} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Ciclo / Inicio / Duración / Turno */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Ciclo / Inicio / Duración / Turno</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ciclo *</label>
                 <div className="relative">
                   <select
                     value={form.ciclo}
-                    onChange={e => setForm(p => ({ ...p, ciclo: e.target.value }))}
+                    onChange={e => handleFieldChange("ciclo", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     {ciclos.map(c => <option key={c}>{c}</option>)}
@@ -241,6 +308,65 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
                   <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
                 </div>
               </div>
+              <Field label="Inicio" name="cicloInicio" placeholder="Marzo 2026" value={form.cicloInicio} onChange={handleFieldChange} />
+              <Field label="Duración" name="cicloDuracion" placeholder="6 meses" value={form.cicloDuracion} onChange={handleFieldChange} />
+              <Field label="Turno" name="cicloTurno" placeholder="Mañana" value={form.cicloTurno} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Domicilio */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <MapPin size={14} /> Domicilio
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <Field label="Dirección *" name="direccion" placeholder="Av. Enrique Cortijos" value={form.direccion} error={errors.direccion} onChange={handleFieldChange} />
+              </div>
+              <Field label="Distrito *" name="distrito" placeholder="El Collao" value={form.distrito} error={errors.distrito} onChange={handleFieldChange} />
+              <Field label="Provincia *" name="provincia" placeholder="Puno" value={form.provincia} error={errors.provincia} onChange={handleFieldChange} />
+              <Field label="Departamento *" name="departamento" placeholder="Puno" value={form.departamento} error={errors.departamento} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* En qué I.E. estudió la secundaria */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <BookOpen size={14} /> En qué I.E. Estudió la Secundaria
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <Field label="Nombre de la I.E. *" name="colegioNombre" placeholder="I.E. San Juan" value={form.colegioNombre} error={errors.colegioNombre} onChange={handleFieldChange} />
+              </div>
+              <Field label="Distrito *" name="colegioDistrito" placeholder="Puno" value={form.colegioDistrito} error={errors.colegioDistrito} onChange={handleFieldChange} />
+              <Field label="Provincia *" name="colegioProvincia" placeholder="Puno" value={form.colegioProvincia} error={errors.colegioProvincia} onChange={handleFieldChange} />
+              <Field label="Departamento *" name="colegioDepartamento" placeholder="Puno" value={form.colegioDepartamento} error={errors.colegioDepartamento} onChange={handleFieldChange} />
+              <Field label="Año de Egreso *" name="colegioAnioEgreso" placeholder="2025" value={form.colegioAnioEgreso} error={errors.colegioAnioEgreso} onChange={handleFieldChange} />
+            </div>
+          </div>
+
+          {/* Cómo se enteró */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">¿Cómo se Enteró de la Academia?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Medio *</label>
+                <select
+                  value={form.comoSeEntero}
+                  onChange={e => handleFieldChange("comoSeEntero", e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  {[
+                    { value: "redes", label: "Redes Sociales" },
+                    { value: "radio", label: "Radio" },
+                    { value: "tv", label: "T.V." },
+                    { value: "otro", label: "Otra persona" },
+                  ].map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <Field label="Detalle" name="comoSeEnteroDetalle" placeholder="Nombre de la persona o medio" value={form.comoSeEnteroDetalle} onChange={handleFieldChange} />
             </div>
           </div>
 
@@ -255,16 +381,29 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
                 <input
                   type="number"
                   value={form.monto}
-                  onChange={e => setForm(p => ({ ...p, monto: e.target.value }))}
+                  onChange={e => handleFieldChange("monto", e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
+                <div className="relative">
+                  <select
+                    value={form.sede}
+                    onChange={e => handleFieldChange("sede", e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    {sedes.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
                 <div className="relative">
                   <select
                     value={form.metodoPago}
-                    onChange={e => setForm(p => ({ ...p, metodoPago: e.target.value }))}
+                    onChange={e => handleFieldChange("metodoPago", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     {["Efectivo", "Transferencia", "Yape", "Plin", "Tarjeta"].map(m => <option key={m}>{m}</option>)}
@@ -277,7 +416,7 @@ function NewStudentForm({ onClose, onSave, sedes, ciclos }: {
 
           {/* Disclaimer */}
           <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
-            Al registrar al estudiante se generará automáticamente su ficha de matrícula y podrá gestionar sus pagos desde el módulo de Pagos.
+            Al registrar al estudiante se generará automáticamente su ficha de matrícula (idéntica al formato físico) y podrá descargarla en PDF desde el módulo de Matrículas.
           </div>
         </div>
 
@@ -300,6 +439,10 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
   const handleDownloadOficial = () => {
     window.open(`${API_BASE}/students/${student.id}/ficha-matricula/pdf`, "_blank");
   };
+
+  const nombreCompleto = student.apellidoPaterno
+    ? `${student.apellidoPaterno} ${student.apellidoMaterno ?? ""} ${student.nombres}`.replace(/\s+/g, " ").trim()
+    : `${student.apellidos} ${student.nombres}`;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -325,8 +468,8 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
               <img src={logoImg} alt="La Pre Perú" className="h-16 object-contain" />
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">N° Matrícula</p>
-              <p className="font-bold text-lg text-red-700">MAT-{student.id.padStart(5, "0")}</p>
+              <p className="text-xs text-gray-500">Código de Matrícula</p>
+              <p className="font-bold text-lg text-red-700">{student.codigoMatricula || `MAT-${student.id.padStart(5, "0")}`}</p>
               <p className="text-xs text-gray-500">Fecha: {student.fechaMatricula}</p>
             </div>
           </div>
@@ -338,10 +481,16 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
             <h3 className="text-sm font-bold text-red-700 uppercase tracking-wider mb-4">Datos del Estudiante</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
               {[
+                ["Apellido Paterno", student.apellidoPaterno || "—"],
+                ["Apellido Materno", student.apellidoMaterno || "—"],
+                ["Nombres", student.nombres],
                 ["DNI", student.dni],
-                ["Apellidos y Nombres", `${student.apellidos} ${student.nombres}`],
+                ["Fecha de Nacimiento", student.fechaNacimiento || "—"],
+                ["Lugar de Nacimiento", student.lugarNacimiento || "—"],
                 ["Teléfono", student.telefono],
                 ["Correo Electrónico", student.email],
+                ["Escuela Profesional", student.escuelaProfesional || "—"],
+                ["Facultad", student.facultad || "—"],
                 ["Sede", student.sede],
                 ["Ciclo", student.ciclo],
                 ["Fecha de Matrícula", student.fechaMatricula],
@@ -352,6 +501,28 @@ function MatriculaView({ student, onClose }: { student: Student; onClose: () => 
                   <span className="text-gray-800 font-semibold mt-0.5">{value}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Domicilio / Colegio */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <div className="bg-gray-50 rounded-xl p-5">
+              <h3 className="text-sm font-bold text-red-700 uppercase tracking-wider mb-4">Domicilio</h3>
+              <div className="space-y-1 text-sm">
+                <p><span className="text-gray-400">Dirección: </span>{student.direccion || "—"}</p>
+                <p><span className="text-gray-400">Distrito: </span>{student.distrito || "—"}</p>
+                <p><span className="text-gray-400">Provincia: </span>{student.provincia || "—"}</p>
+                <p><span className="text-gray-400">Departamento: </span>{student.departamento || "—"}</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-5">
+              <h3 className="text-sm font-bold text-red-700 uppercase tracking-wider mb-4">Secundaria</h3>
+              <div className="space-y-1 text-sm">
+                <p><span className="text-gray-400">I.E.: </span>{student.colegioNombre || "—"}</p>
+                <p><span className="text-gray-400">Distrito: </span>{student.colegioDistrito || "—"}</p>
+                <p><span className="text-gray-400">Provincia: </span>{student.colegioProvincia || "—"}</p>
+                <p><span className="text-gray-400">Año egreso: </span>{student.colegioAnioEgreso || "—"}</p>
+              </div>
             </div>
           </div>
 
@@ -558,7 +729,9 @@ function Estudiantes({ students, onAdd, onViewMatricula }: {
                   <td className="px-4 py-3 font-mono font-semibold text-gray-700">{s.dni}</td>
                   <td className="px-4 py-3">
                     <div>
-                      <p className="font-semibold text-gray-800">{s.apellidos}</p>
+                      <p className="font-semibold text-gray-800">
+                        {s.apellidoPaterno ? `${s.apellidoPaterno} ${s.apellidoMaterno ?? ""}` : s.apellidos}
+                      </p>
                       <p className="text-gray-500 text-xs">{s.nombres}</p>
                     </div>
                   </td>
@@ -787,7 +960,9 @@ function Matriculas({ students, onAdd, onViewMatricula }: {
                   {s.apellidos[0]}{s.nombres[0]}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 text-sm">{s.apellidos}</p>
+                  <p className="font-bold text-gray-800 text-sm">
+                    {s.apellidoPaterno ? `${s.apellidoPaterno} ${s.apellidoMaterno ?? ""}` : s.apellidos}
+                  </p>
                   <p className="text-xs text-gray-500">{s.nombres}</p>
                 </div>
               </div>
@@ -882,6 +1057,27 @@ export default function App() {
           sede: s.sede,
           ciclo: s.ciclo,
           monto: s.monto,
+          codigoMatricula: s.codigoMatricula,
+          apellidoPaterno: s.apellidoPaterno,
+          apellidoMaterno: s.apellidoMaterno,
+          fechaNacimiento: s.fechaNacimiento,
+          lugarNacimiento: s.lugarNacimiento,
+          escuelaProfesional: s.escuelaProfesional,
+          facultad: s.facultad,
+          cicloInicio: s.cicloInicio,
+          cicloDuracion: s.cicloDuracion,
+          cicloTurno: s.cicloTurno,
+          direccion: s.direccion,
+          distrito: s.distrito,
+          provincia: s.provincia,
+          departamento: s.departamento,
+          colegioNombre: s.colegioNombre,
+          colegioDistrito: s.colegioDistrito,
+          colegioProvincia: s.colegioProvincia,
+          colegioDepartamento: s.colegioDepartamento,
+          colegioAnioEgreso: s.colegioAnioEgreso,
+          comoSeEntero: s.comoSeEntero,
+          comoSeEnteroDetalle: s.comoSeEnteroDetalle,
         }),
       });
       if (!res.ok) {
