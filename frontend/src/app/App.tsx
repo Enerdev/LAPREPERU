@@ -77,7 +77,7 @@ interface Payment {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const SEDES = ["Lima - Miraflores", "Lima - San Isidro", "Arequipa", "Trujillo", "Cusco", "Piura"];
+const SEDES = ["Juliaca", "Puno"] as const;
 const CICLOS = ["I Ciclo", "II Ciclo", "III Ciclo", "IV Ciclo", "Intensivo", "Regular"];
 
 // ─── Helper Components ────────────────────────────────────────────────────────
@@ -612,8 +612,7 @@ function Dashboard({ students, payments }: { students: Student[]; payments: Paym
           <div className="space-y-3">
             {SEDES.map(sede => {
               const count = students.filter(s => s.sede === sede).length;
-              if (!count) return null;
-              const pct = Math.round((count / students.length) * 100);
+              const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
               return (
                 <div key={sede}>
                   <div className="flex justify-between text-sm mb-1">
@@ -863,58 +862,46 @@ function Sedes({ students }: { students: Student[] }) {
     total: students.filter(s => s.sede === sede).length,
     activos: students.filter(s => s.sede === sede && s.estado === "activo").length,
     recaudado: students.filter(s => s.sede === sede).reduce((a, s) => a + s.montoPagado, 0),
-  })).filter(s => s.total > 0);
+  }));
 
   const cityMap: Record<string, string> = {
-    "Lima - Miraflores": "Lima",
-    "Lima - San Isidro": "Lima",
-    "Arequipa": "Arequipa",
-    "Trujillo": "Trujillo",
-    "Cusco": "Cusco",
-    "Piura": "Piura",
+    "Juliaca": "San Román",
+    "Puno": "Puno",
   };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {sedesData.map(sede => (
-          <div key={sede.nombre} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div key={sede.nombre} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-red-700 to-red-500 rounded-xl flex items-center justify-center">
-                  <MapPin size={18} className="text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-red-700 to-red-500 rounded-xl flex items-center justify-center shadow shadow-red-200">
+                  <MapPin size={22} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-800 text-sm leading-tight">{sede.nombre}</h3>
+                  <h3 className="font-bold text-gray-800 text-base leading-tight">Sede {sede.nombre}</h3>
                   <p className="text-xs text-gray-400">Academia La Pre Perú</p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">{cityMap[sede.nombre]}</span>
+              <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">{cityMap[sede.nombre] ?? sede.nombre}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-gray-50 rounded-xl p-2">
-                <p className="text-xl font-bold text-gray-800">{sede.total}</p>
-                <p className="text-xs text-gray-400">Total</p>
+            <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-gray-50">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-2xl font-bold text-gray-800">{sede.total}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Total</p>
               </div>
-              <div className="bg-green-50 rounded-xl p-2">
-                <p className="text-xl font-bold text-green-700">{sede.activos}</p>
-                <p className="text-xs text-gray-400">Activos</p>
+              <div className="bg-green-50 rounded-xl p-3">
+                <p className="text-2xl font-bold text-green-700">{sede.activos}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Activos</p>
               </div>
-              <div className="bg-red-50 rounded-xl p-2">
-                <p className="text-base font-bold text-red-700">S/{sede.recaudado}</p>
-                <p className="text-xs text-gray-400">Recaudado</p>
+              <div className="bg-red-50 rounded-xl p-3">
+                <p className="text-lg font-bold text-red-700">S/{sede.recaudado}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Recaudado</p>
               </div>
             </div>
           </div>
         ))}
-
-        {/* Add Sede Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-all min-h-[160px]">
-          <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-            <Plus size={20} className="text-gray-400" />
-          </div>
-          <p className="text-sm font-medium text-gray-400">Agregar nueva sede</p>
-        </div>
       </div>
     </div>
   );

@@ -2,9 +2,12 @@ import { Request, Response } from "express";
 import PDFDocument from "pdfkit";
 import { prisma } from "../lib/prisma";
 
+export const VALID_SEDES = ["Juliaca", "Puno"] as const;
+export type ValidSede = typeof VALID_SEDES[number];
+
 // GET /api/students/export/pdf
 // Exporta la lista de alumnos matriculados/inscritos a PDF.
-// Filtros opcionales por query string: ?sede=Lima&ciclo=IV%20Ciclo&estado=activo
+// Filtros opcionales por query string: ?sede=Juliaca&ciclo=IV%20Ciclo&estado=activo
 export async function exportStudentsPdf(req: Request, res: Response) {
   const { sede, ciclo, estado } = req.query as {
     sede?: string;
@@ -150,6 +153,10 @@ export async function createStudent(req: Request, res: Response) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
   }
 
+  if (!VALID_SEDES.includes(sede as ValidSede)) {
+    return res.status(400).json({ error: `Sede inválida. Solo se permiten: ${VALID_SEDES.join(", ")}` });
+  }
+
   try {
     const student = await prisma.student.create({
       data: {
@@ -180,6 +187,10 @@ export async function createStudent(req: Request, res: Response) {
 
 // PUT /api/students/:id
 export async function updateStudent(req: Request, res: Response) {
+  if (req.body.sede && !VALID_SEDES.includes(req.body.sede)) {
+    return res.status(400).json({ error: `Sede inválida. Solo se permiten: ${VALID_SEDES.join(", ")}` });
+  }
+
   try {
     const student = await prisma.student.update({
       where: { id: req.params.id },

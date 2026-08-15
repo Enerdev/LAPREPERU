@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { VALID_SEDES, ValidSede } from "./students.controller";
 
 // GET /api/payments
 export async function listPayments(req: Request, res: Response) {
@@ -16,6 +17,10 @@ export async function createPayment(req: Request, res: Response) {
 
   if (!studentId || !concepto || monto == null || !sede) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
+  }
+
+  if (!VALID_SEDES.includes(sede as ValidSede)) {
+    return res.status(400).json({ error: `Sede inválida. Solo se permiten: ${VALID_SEDES.join(", ")}` });
   }
 
   const student = await prisma.student.findUnique({ where: { id: studentId } });
@@ -49,6 +54,10 @@ export async function createPayment(req: Request, res: Response) {
 
 // PUT /api/payments/:id
 export async function updatePayment(req: Request, res: Response) {
+  if (req.body.sede && !VALID_SEDES.includes(req.body.sede)) {
+    return res.status(400).json({ error: `Sede inválida. Solo se permiten: ${VALID_SEDES.join(", ")}` });
+  }
+
   try {
     const payment = await prisma.payment.update({
       where: { id: req.params.id },
